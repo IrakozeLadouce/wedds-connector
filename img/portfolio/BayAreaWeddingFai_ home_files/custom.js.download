@@ -1,0 +1,5 @@
+function update_maps(location){
+
+                $('.map').attr('data-map-address',location)
+                INSPIRO.maps()
+            }

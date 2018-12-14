@@ -1,0 +1,112 @@
+$x = $;
+
+$(document).off('click', '#openForm').on('click', '#openForm', function(e) {
+    e.preventDefault();
+    var withLightbox = '800';
+    if(typeof lightboxWidth !== 'undefined') withLightbox = lightboxWidth;
+    var onClose = function (message) { }
+
+    var href = $(this).attr('href');
+    if(href.indexOf(document.domain) === -1) {
+        href = document.location.protocol + '//' + document.domain + href;
+    }
+
+    Wix.getSiteInfo( function(siteInfo) {
+        // do something with the siteInfo
+        href = href +'&ref=' + siteInfo.url + '&_referrer_=' + siteInfo.referer;
+        Wix.openModal(href, withLightbox, "600", onClose);
+    });
+});
+
+function refreshWidgetFrame() {
+    var newheight = 35 + document.body.offsetHeight; //MNG
+    if (typeof frameHeightAdditionalSpace != 'undefined') // BTV
+    {
+        newheight = newheight + frameHeightAdditionalSpace;
+    }
+
+    Wix.setHeight(newheight);
+}
+
+function redirectToForm(url, theToken) {
+
+    var wixGetSiteInfoResponded = false;
+
+    Wix.getSiteInfo( function(siteInfo) {
+
+        wixGetSiteInfoResponded = true;
+
+        url = url +'&refEn=' + btoa(siteInfo.url) + '&_referrerEn_=' + btoa(siteInfo.referer);
+
+        saveStyleData(theToken, function(){
+            window.location.href = url;
+        });
+
+    });
+
+    // ON IE11, Wix.getSiteInfo is not working. We proceed straight to site if the Wix.getSiteInfo() is not
+    // responding.
+    if ( !!window.MSInputMethodContext && !!document.documentMode ) {
+        setTimeout(function () {
+            if ( !wixGetSiteInfoResponded ) {
+                url = url + '&refEn=&_referrerEn_=';
+                window.location = url;
+            }
+        }, 4000);
+    }
+
+}
+
+function saveStyleData(theToken, callback){
+    if (Wix.Utils.getViewMode() === 'site') {
+        Wix.Styles.getStyleParams(function (styleParams) {
+            window.$.ajax({
+                type: 'post',
+                url: '/ajax_call.php',
+                data: {
+                    theToken: theToken,
+                    module: 'modules/wixNew/ajaxHandler.php',
+                    action: 'saveWixStyleData',
+                    styleData: encodeURIComponent(JSON.stringify(styleParams)),
+                    compID: Wix.Utils.getCompId()
+                }
+            }).always(function () {
+                if (typeof callback !== 'undefined') {
+                    callback();
+                }
+            });
+        });
+    } else {
+        if (typeof callback !== 'undefined') {
+            callback();
+        }
+    }
+}
+
+function addListener() {
+    Wix.addEventListener(Wix.Events.SETTINGS_UPDATED, function(e) {
+        if(e == 'ajaxRefreshButton') {
+            var instanceID = Wix.Utils.getInstanceId();
+            var compID = Wix.Utils.getCompId();
+
+            $.ajax({
+                type: 'post',
+                url: '/ajax_call.php',
+                dataType: "json",
+                data: {
+                    module: "modules/wixNew/class.WixFunctions.php",
+                    class: 'wixFunctions',
+                    function: "getButtonConfig",
+                    instanceID: instanceID,
+                    compID: compID
+                },
+                success: function (data) {
+                    if(data.type == 'button') {
+                        $('#openForm').html(data.text);
+                        $('#openForm').attr('style', 'border-radius: ' + data.roundedCorner + 'px !important; border-width: ' + data.borderSize + 'px !important');
+                    }
+                }
+            });
+        }
+    });
+}

@@ -1,0 +1,5 @@
+(function ($) {
+    $(function() {
+       Wix.Performance.applicationLoaded();
+    });
+})(jQuery);
